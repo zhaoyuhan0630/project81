@@ -5,9 +5,12 @@ class Color {
     constructor(r, g, b, a) {
         this.change(r, g, b, a);
     }
-    
+
     change(r, g, b, a) {
-        this.r = r; this.g = g; this.b = b; this.a = a;
+        this.r = r;
+        this.g = g;
+        this.b = b;
+        this.a = a;
     }
 }
 
@@ -18,7 +21,9 @@ class Vector {
     }
 
     set(x, y, z) {
-        this.x = x; this.y = y; this.z = z;
+        this.x = x;
+        this.y = y;
+        this.z = z;
     }
 
     static dot(v1, v2) {
@@ -77,18 +82,18 @@ function getInputTriangles() {
 
 // Blinn-Phong lighting computation
 function computeBlinnPhongLighting(intersect, normal, view, material, lightPos) {
-    const ambient = Vector.scale(material.ambient, new Vector(1, 1, 1));
+    const ambient = Vector.scale(material.ambient[0], new Vector(1, 1, 1));
     
     const lightDir = Vector.normalize(Vector.subtract(lightPos, intersect));
     const viewDir = Vector.normalize(Vector.subtract(view, intersect));
     const halfDir = Vector.normalize(Vector.add(lightDir, viewDir));
 
     const diffuse = Vector.scale(
-        material.diffuse, Math.max(Vector.dot(normal, lightDir), 0)
+        material.diffuse[0], Math.max(Vector.dot(normal, lightDir), 0)
     );
     
     const specular = Vector.scale(
-        material.specular,
+        material.specular[0],
         Math.pow(Math.max(Vector.dot(normal, halfDir), 0), material.n)
     );
 
@@ -99,22 +104,6 @@ function computeBlinnPhongLighting(intersect, normal, view, material, lightPos) 
         Math.min(255, color.z * 255),
         255
     );
-}
-
-// Check if a point is inside a triangle using barycentric coordinates
-function isInsideTriangle(p, v0, v1, v2) {
-    const d00 = Vector.dot(v0, v0);
-    const d01 = Vector.dot(v0, v1);
-    const d11 = Vector.dot(v1, v1);
-    const d20 = Vector.dot(v2, v0);
-    const d21 = Vector.dot(v2, v1);
-    const denom = d00 * d11 - d01 * d01;
-
-    const v = (d11 * d20 - d01 * d21) / denom;
-    const w = (d00 * d21 - d01 * d20) / denom;
-    const u = 1 - v - w;
-
-    return u >= 0 && v >= 0 && w >= 0;
 }
 
 // Draw triangles using ray tracing
@@ -138,7 +127,7 @@ function drawInputTriangles(context) {
                 const rayDir = Vector.normalize(new Vector(x / w - 0.5, (h - y) / h - 0.5, 0));
 
                 inputTriangles.forEach(function(triangleSet) {
-                    triangleSet.triangles.forEach(function(triangle, triIdx) {
+                    triangleSet.triangles.forEach(function(triangle) {
                         const v0Idx = triangle[0];
                         const v1Idx = triangle[1];
                         const v2Idx = triangle[2];
