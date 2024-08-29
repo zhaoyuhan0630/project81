@@ -1,6 +1,19 @@
-// Color class to represent RGBA colors
+// Color constructor
 class Color {
     constructor(r, g, b, a) {
+        if (r < 0 || g < 0 || b < 0 || a < 0 || r > 255 || g > 255 || b > 255 || a > 255) {
+            throw "Invalid color component";
+        }
+        this.r = r;
+        this.g = g;
+        this.b = b;
+        this.a = a;
+    }
+
+    change(r, g, b, a) {
+        if (r < 0 || g < 0 || b < 0 || a < 0 || r > 255 || g > 255 || b > 255 || a > 255) {
+            throw "Invalid color component";
+        }
         this.r = r;
         this.g = g;
         this.b = b;
@@ -56,20 +69,17 @@ function drawPixel(imagedata, x, y, color) {
 }
 
 // Fetch the input triangles from the given URL
-async function getInputTriangles() {
-    const INPUT_TRIANGLES_URL = "https://github.com/NCSUCGClass/prog1/blob/gh-pages/triangles.json";
-    try {
-        const response = await fetch(INPUT_TRIANGLES_URL);
-        if (response.ok) {
-            const triangles = await response.json();
-            return triangles;
-        } else {
-            console.log("Failed to load triangle data.");
-            return null;
-        }
-    } catch (error) {
-        console.error("Error fetching triangles:", error);
+function getInputTriangles() {
+    const INPUT_TRIANGLES_URL = "https://ncsucgclass.github.io/prog1/triangles.json";
+    var httpReq = new XMLHttpRequest(); // a new http request
+    httpReq.open("GET", INPUT_TRIANGLES_URL, false); // init the request
+    httpReq.send(null); // send the request
+
+    if (httpReq.status !== 200) {
+        console.log("Unable to open input triangles file!");
         return null;
+    } else {
+        return JSON.parse(httpReq.response);
     }
 }
 
@@ -77,7 +87,7 @@ async function getInputTriangles() {
 function computeBlinnPhongLighting(intersect, normal, view, material, lightPos) {
     const lightColor = new Vector(1, 1, 1);
     const ambient = Vector.scale(material.ambient[0], lightColor);
-    
+
     const lightDir = Vector.normalize(Vector.subtract(lightPos, intersect));
     const viewDir = Vector.normalize(Vector.subtract(view, intersect));
     const halfDir = Vector.normalize(Vector.add(lightDir, viewDir));
@@ -85,7 +95,7 @@ function computeBlinnPhongLighting(intersect, normal, view, material, lightPos) 
     const diffuse = Vector.scale(
         material.diffuse[0], Math.max(Vector.dot(normal, lightDir), 0)
     );
-    
+
     const specular = Vector.scale(
         material.specular[0],
         Math.pow(Math.max(Vector.dot(normal, halfDir), 0), material.n)
@@ -135,12 +145,12 @@ function intersectRayTriangle(origin, direction, v0, v1, v2) {
 }
 
 // Draw triangles using ray tracing
-async function drawInputTriangles(context) {
-    const inputTriangles = await getInputTriangles();
+function drawInputTriangles(context) {
+    const inputTriangles = getInputTriangles();
     const w = context.canvas.width;
     const h = context.canvas.height;
     const imagedata = context.createImageData(w, h);
-    
+
     const eye = new Vector(0.5, 0.5, -0.5);
     const lightPos = new Vector(-3, 1, -0.5);
 
@@ -187,8 +197,8 @@ async function drawInputTriangles(context) {
 }
 
 /* main -- here is where execution begins after window load */
-async function main() {
+function main() {
     var canvas = document.getElementById("viewport");
     var context = canvas.getContext("2d");
-    await drawInputTriangles(context);
+    drawInputTriangles(context);
 }
