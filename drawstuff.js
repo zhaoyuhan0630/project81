@@ -1,29 +1,22 @@
-/* classes */
-
-// Color constructor
+// Color class to represent RGBA colors
 class Color {
     constructor(r, g, b, a) {
         this.change(r, g, b, a);
     }
-
+    
     change(r, g, b, a) {
-        this.r = r;
-        this.g = g;
-        this.b = b;
-        this.a = a;
+        this.r = r; this.g = g; this.b = b; this.a = a;
     }
 }
 
-// Vector class from exercise 4
+// Vector class for 3D vector operations
 class Vector {
     constructor(x, y, z) {
         this.set(x, y, z);
     }
 
     set(x, y, z) {
-        this.x = x;
-        this.y = y;
-        this.z = z;
+        this.x = x; this.y = y; this.z = z;
     }
 
     static dot(v1, v2) {
@@ -65,24 +58,21 @@ function drawPixel(imagedata, x, y, color) {
     imagedata.data[pixelindex + 3] = color.a;
 }
 
-// Get the input triangles from the URL
+// Get the input triangles from the JSON file URL
 function getInputTriangles() {
-    const INPUT_TRIANGLES_URL = "https://ncsucgclass.github.io/prog1/triangles.json";
-    var httpReq = new XMLHttpRequest();
-    httpReq.open("GET", INPUT_TRIANGLES_URL, false);
-    httpReq.send(null);
-
-    if (httpReq.status === 200) {
-        return JSON.parse(httpReq.response);
-    } else {
-        console.log("Unable to open input triangles file!");
-        return null;
-    }
+    return [
+        {
+            "material": {"ambient": [0.1,0.1,0.1], "diffuse": [0.0,0.6,0.0], "specular": [0.3,0.3,0.3], "n": 3},
+            "vertices": [[0.25, 0.25, 0.25],[0.5, 0.75, 0.25],[0.75,0.25,0.25]],
+            "triangles": [[0,1,2]]
+        }
+    ];
 }
 
-// Blinn-Phong lighting computation
+// Compute Blinn-Phong lighting
 function computeBlinnPhongLighting(intersect, normal, view, material, lightPos) {
-    const ambient = Vector.scale(material.ambient[0], new Vector(1, 1, 1));
+    const lightColor = new Vector(1, 1, 1);
+    const ambient = Vector.scale(material.ambient[0], lightColor);
     
     const lightDir = Vector.normalize(Vector.subtract(lightPos, intersect));
     const viewDir = Vector.normalize(Vector.subtract(view, intersect));
@@ -114,7 +104,7 @@ function drawInputTriangles(context) {
     const imagedata = context.createImageData(w, h);
     
     const eye = new Vector(0.5, 0.5, -0.5);
-    const lightPos = new Vector(-0.5, 1.5, -0.5);
+    const lightPos = new Vector(-3, 1, -0.5);
 
     if (inputTriangles) {
         for (let y = 0; y < h; y++) {
@@ -124,7 +114,7 @@ function drawInputTriangles(context) {
                 let nearestIntersect = null;
                 let nearestNormal = null;
 
-                const rayDir = Vector.normalize(new Vector(x / w - 0.5, (h - y) / h - 0.5, 0));
+                const rayDir = Vector.normalize(new Vector(x / w, 1 - y / h, 0));
 
                 inputTriangles.forEach(function(triangleSet) {
                     triangleSet.triangles.forEach(function(triangle) {
@@ -182,7 +172,6 @@ function drawInputTriangles(context) {
 }
 
 /* main -- here is where execution begins after window load */
-
 function main() {
     var canvas = document.getElementById("viewport");
     var context = canvas.getContext("2d");
