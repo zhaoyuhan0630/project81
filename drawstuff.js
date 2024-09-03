@@ -350,6 +350,66 @@ function drawInputBoxesUsingPaths(context) {
     } // end if box files found
 } // end draw input boxes
 
+
+function rayCastRenderTriangles(context) {
+    var inputTriangles = getInputTriangles(); // 加载三角形数据
+    var w = context.canvas.width;
+    var h = context.canvas.height;
+    var imagedata = context.createImageData(w, h);
+    
+    var eye = {x: 0.5, y: 0.5, z: -0.5}; // 眼睛位置
+    var lookAt = {x: 0, y: 0, z: 1}; // 观察方向
+    var up = {x: 0, y: 1, z: 0}; // 上方向
+    var fov = 1; // 视场（简化为正方形视窗）
+    var viewDistance = 0.5; // 视窗距离
+
+    // 遍历画布上的每个像素
+    for (var px = 0; px < w; px++) {
+        for (var py = 0; py < h; py++) {
+            // 将像素坐标转换为视窗坐标
+            var x = (px / w) - 0.5;
+            var y = (py / h) - 0.5;
+            
+            // 创建光线方向
+            var ray = {
+                x: lookAt.x * viewDistance + x,
+                y: lookAt.y * viewDistance + y,
+                z: lookAt.z * viewDistance
+            };
+
+            // 初始化最小深度和颜色
+            var minDepth = Infinity;
+            var color = null;
+
+            // 检查每个三角形
+            inputTriangles.forEach(trianglesFile => {
+                trianglesFile.triangles.forEach(triangleIndex => {
+                    var triangle = trianglesFile.vertices.map(vIdx => trianglesFile.vertices[vIdx]);
+                    // 这里需要添加一个检查光线与三角形相交的函数，我们简化处理：
+                    var result = rayIntersectsTriangle(eye, ray, triangle);
+                    if (result.hit && result.distance < minDepth) {
+                        minDepth = result.distance;
+                        color = trianglesFile.material.diffuse;
+                    }
+                });
+            });
+
+            // 如果有颜色，则设置像素
+            if (color) {
+                var idx = (py * w + px) * 4;
+                imagedata.data[idx] = color[0] * 255;
+                imagedata.data[idx + 1] = color[1] * 255;
+                imagedata.data[idx + 2] = color[2] * 255;
+                imagedata.data[idx + 3] = 255; // alpha值
+            }
+        }
+    }
+    context.putImageData(imagedata, 0, 0);
+}
+
+
+
+
 /* main -- here is where execution begins after window load */
 
 function main() {
@@ -357,6 +417,7 @@ function main() {
     // Get the canvas and context
     var canvas = document.getElementById("viewport"); 
     var context = canvas.getContext("2d");
+    rayCastRenderTriangles(context);
  
     // Create the image
     //drawRandPixels(context);
@@ -368,7 +429,7 @@ function main() {
     //drawInputEllipsoidsUsingArcs(context);
       // shows how to read input file, but not how to draw pixels
     
-    drawRandPixelsInInputTriangles(context);
+    //drawRandPixelsInInputTriangles(context);
       // shows how to draw pixels and read input file
     
     //drawInputTrainglesUsingPaths(context);
