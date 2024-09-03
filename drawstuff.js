@@ -86,26 +86,6 @@ function drawRandPixels(context) {
     context.putImageData(imagedata, 0, 0);
 } // end draw random pixels
 
-// get the input ellipsoids from the standard class URL
-function getInputEllipsoids() {
-    const INPUT_ELLIPSOIDS_URL = 
-        "https://ncsucgclass.github.io/prog1/ellipsoids.json";
-        
-    // load the ellipsoids file
-    var httpReq = new XMLHttpRequest(); // a new http request
-    httpReq.open("GET",INPUT_ELLIPSOIDS_URL,false); // init the request
-    httpReq.send(null); // send the request
-    var startTime = Date.now();
-    while ((httpReq.status !== 200) && (httpReq.readyState !== XMLHttpRequest.DONE)) {
-        if ((Date.now()-startTime) > 3000)
-            break;
-    } // until its loaded or we time out after three seconds
-    if ((httpReq.status !== 200) || (httpReq.readyState !== XMLHttpRequest.DONE)) {
-        console.log*("Unable to open input ellipses file!");
-        return String.null;
-    } else
-        return JSON.parse(httpReq.response); 
-} // end get input ellipsoids
 
 //get the input triangles from the standard class URL
 function getInputTriangles() {
@@ -149,95 +129,7 @@ function getInputBoxes() {
         return JSON.parse(httpReq.response); 
 } // end get input boxes
 
-// put random points in the ellipsoids from the class github
-function drawRandPixelsInInputEllipsoids(context) {
-    var inputEllipsoids = getInputEllipsoids();
-    var w = context.canvas.width;
-    var h = context.canvas.height;
-    var imagedata = context.createImageData(w,h);
-    const PIXEL_DENSITY = 0.1;
-    var numCanvasPixels = (w*h)*PIXEL_DENSITY; 
-    
-    if (inputEllipsoids != String.null) { 
-        var x = 0; var y = 0; // pixel coord init
-        var cx = 0; var cy = 0; // init center x and y coord
-        var ellipsoidXRadius = 0; // init ellipsoid x radius
-        var ellipsoidYRadius = 0; // init ellipsoid y radius
-        var numEllipsoidPixels = 0; // init num pixels in ellipsoid
-        var c = new Color(0,0,0,0); // init the ellipsoid color
-        var n = inputEllipsoids.length; // the number of input ellipsoids
-        //console.log("number of ellipses: " + n);
 
-        // Loop over the ellipsoids, draw rand pixels in each
-        for (var e=0; e<n; e++) {
-            cx = w*inputEllipsoids[e].x; // ellipsoid center x
-            cy = h*inputEllipsoids[e].y; // ellipsoid center y
-            ellipsoidXRadius = Math.round(w*inputEllipsoids[e].a); // x radius
-            ellipsoidYRadius = Math.round(h*inputEllipsoids[e].b); // y radius
-            numEllipsoidPixels = ellipsoidXRadius*ellipsoidYRadius*Math.PI; // projected ellipsoid area
-            numEllipsoidPixels *= PIXEL_DENSITY; // percentage of ellipsoid area to render to pixels
-            numEllipsoidPixels = Math.round(numEllipsoidPixels);
-            //console.log("ellipsoid x radius: "+ellipsoidXRadius);
-            //console.log("ellipsoid y radius: "+ellipsoidYRadius);
-            //console.log("num ellipsoid pixels: "+numEllipsoidPixels);
-            c.change(
-                inputEllipsoids[e].diffuse[0]*255,
-                inputEllipsoids[e].diffuse[1]*255,
-                inputEllipsoids[e].diffuse[2]*255,
-                255); // ellipsoid diffuse color
-            for (var p=0; p<numEllipsoidPixels; p++) {
-                do {
-                    x = Math.random()*2 - 1; // in unit square 
-                    y = Math.random()*2 - 1; // in unit square
-                } while (Math.sqrt(x*x + y*y) > 1) // a circle is also an ellipse
-                drawPixel(imagedata,
-                    cx+Math.round(x*ellipsoidXRadius),
-                    cy+Math.round(y*ellipsoidYRadius),c);
-                //console.log("color: ("+c.r+","+c.g+","+c.b+")");
-                //console.log("x: "+Math.round(w*inputEllipsoids[e].x));
-                //console.log("y: "+Math.round(h*inputEllipsoids[e].y));
-            } // end for pixels in ellipsoid
-        } // end for ellipsoids
-        context.putImageData(imagedata, 0, 0);
-    } // end if ellipsoids found
-} // end draw rand pixels in input ellipsoids
-
-// draw 2d projections read from the JSON file at class github
-function drawInputEllipsoidsUsingArcs(context) {
-    var inputEllipsoids = getInputEllipsoids();
-    
-    
-    if (inputEllipsoids != String.null) { 
-        var c = new Color(0,0,0,0); // the color at the pixel: black
-        var w = context.canvas.width;
-        var h = context.canvas.height;
-        var n = inputEllipsoids.length; 
-        //console.log("number of ellipsoids: " + n);
-
-        // Loop over the ellipsoids, draw each in 2d
-        for (var e=0; e<n; e++) {
-            context.fillStyle = 
-                "rgb(" + Math.floor(inputEllipsoids[e].diffuse[0]*255)
-                +","+ Math.floor(inputEllipsoids[e].diffuse[1]*255)
-                +","+ Math.floor(inputEllipsoids[e].diffuse[2]*255) +")"; // diffuse color
-            context.save(); // remember previous (non-) scale
-            context.scale(1, inputEllipsoids[e].b/inputEllipsoids[e].a); // scale by ellipsoid ratio 
-            context.beginPath();
-            context.arc(
-                Math.round(w*inputEllipsoids[e].x),
-                Math.round(h*inputEllipsoids[e].y),
-                Math.round(w*inputEllipsoids[e].a),
-                0,2*Math.PI);
-            context.restore(); // undo scale before fill so stroke width unscaled
-            context.fill();
-            //console.log(context.fillStyle);
-            //console.log("x: "+Math.round(w*inputEllipsoids[e].x));
-            //console.log("y: "+Math.round(h*inputEllipsoids[e].y));
-            //console.log("a: "+Math.round(w*inputEllipsoids[e].a));
-            //console.log("b: "+Math.round(h*inputEllipsoids[e].b));
-        } // end for ellipsoids
-    } // end if ellipsoids found
-} // end draw input ellipsoids
 
 //put random points in the triangles from the class github
 function drawRandPixelsInInputTriangles(context) {
@@ -461,101 +353,31 @@ function drawInputBoxesUsingPaths(context) {
 /* main -- here is where execution begins after window load */
 
 function main() {
-    var canvas = document.getElementById("viewport");
+
+    // Get the canvas and context
+    var canvas = document.getElementById("viewport"); 
     var context = canvas.getContext("2d");
-    var width = canvas.width;
-    var height = canvas.height;
-    var imageData = context.createImageData(width, height);
-
-    var triangles = getInputTriangles(); // Assume this returns an array of triangle objects
-
-    // Example of a camera setup
-    var eye = {x: 0.5, y: 0.5, z: -0.5};
-    var fov = 90;
-    var aspect = width / height;
-    var viewPlaneDistance = 1;
-
-    // Render each pixel
-    for (var px = 0; px < width; px++) {
-        for (var py = 0; py < height; py++) {
-            var ray = createRay(px, py, width, height, eye, fov, aspect, viewPlaneDistance);
-            var closest = {distance: Infinity, color: null};
-
-            for (var i = 0; i < triangles.length; i++) {
-                var triangle = triangles[i];
-                var hit = rayIntersectsTriangle(ray, triangle);
-                if (hit && hit.distance < closest.distance) {
-                    closest = {distance: hit.distance, color: triangle.material.diffuse};
-                }
-            }
-
-            if (closest.color) {
-                var color = new Color(closest.color[0] * 255, closest.color[1] * 255, closest.color[2] * 255, 255);
-                drawPixel(imageData, px, py, color);
-            }
-        }
-    }
-
-    context.putImageData(imageData, 0, 0);
+ 
+    // Create the image
+    //drawRandPixels(context);
+      // shows how to draw pixels
+    
+    //drawRandPixelsInInputEllipsoids(context);
+      // shows how to draw pixels and read input file
+      
+    //drawInputEllipsoidsUsingArcs(context);
+      // shows how to read input file, but not how to draw pixels
+    
+    drawRandPixelsInInputTriangles(context);
+      // shows how to draw pixels and read input file
+    
+    //drawInputTrainglesUsingPaths(context);
+      // shows how to read input file, but not how to draw pixels
+    
+    //drawRandPixelsInInputBoxes(context);
+      // shows how to draw pixels and read input file
+    
+    //drawInputBoxesUsingPaths(context);
+      // shows how to read input file, but not how to draw pixels
 }
-
-function createRay(px, py, width, height, eye, fov, aspect, viewPlaneDistance) {
-    var x = (px / width) * 2 - 1;
-    var y = (py / height) * 2 - 1;
-    x *= Math.tan((fov / 2) * Math.PI / 180) * aspect;
-    y *= Math.tan((fov / 2) * Math.PI / 180);
-
-    return {
-        origin: eye,
-        direction: normalize({x: x, y: -y, z: viewPlaneDistance})
-    };
-}
-
-function rayIntersectsTriangle(ray, triangle) {
-    // Implementation of the Moller-Trumbore intersection algorithm
-    var vertex0 = triangle.vertices[0];
-    var vertex1 = triangle.vertices[1];
-    var vertex2 = triangle.vertices[2];
-    var edge1 = {x: vertex1.x - vertex0.x, y: vertex1.y - vertex0.y, z: vertex1.z - vertex0.z};
-    var edge2 = {x: vertex2.x - vertex0.x, y: vertex2.y - vertex0.y, z: vertex2.z - vertex0.z};
-    var h = crossProduct(ray.direction, edge2);
-    var a = dotProduct(edge1, h);
-
-    if (a > -0.00001 && a < 0.00001) return null; // This ray is parallel to this triangle.
-    var f = 1.0 / a;
-    var s = {x: ray.origin.x - vertex0.x, y: ray.origin.y - vertex0.y, z: ray.origin.z - vertex0.z};
-    var u = f * dotProduct(s, h);
-
-    if (u < 0.0 || u > 1.0) return null;
-    var q = crossProduct(s, edge1);
-    var v = f * dotProduct(ray.direction, q);
-
-    if (v < 0.0 || u + v > 1.0) return null;
-    var t = f * dotProduct(edge2, q);
-
-    if (t > 0.00001) { // Ray intersection
-        return {distance: t};
-    }
-
-    return null; // No hit
-}
-
-function normalize(vector) {
-    var length = Math.sqrt(vector.x * vector.x + vector.y * vector.y + vector.z * vector.z);
-    return {x: vector.x / length, y: vector.y / length, z: vector.z / length};
-}
-
-function dotProduct(v1, v2) {
-    return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
-}
-
-function crossProduct(v1, v2) {
-    return {
-        x: v1.y * v2.z - v1.z * v2.y,
-        y: v1.z * v2.x - v1.x * v2.z,
-        z: v1.x * v2.y - v1.y * v2.x
-    };
-}
-
-// Ensure to call `main()` when the page loads
-window.onload = main;
+   
