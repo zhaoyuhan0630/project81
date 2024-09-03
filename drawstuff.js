@@ -1,139 +1,151 @@
-// Constants for the eye, light, and window
-const eye = {x: 0.5, y: 0.5, z: -0.5};
-const light = {x: -3, y: 1, z: -0.5};
-const viewport = {width: 1, height: 1, distance: 0.5};
+/* classes */
 
-// Helper function to calculate dot product
-function dotProduct(v1, v2) {
-    return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
+// Color constructor
+class Color {
+    constructor(r, g, b, a) {
+        this.r = r; this.g = g; this.b = b; this.a = a;
+    }
 }
 
-// Helper function to calculate cross product
-function crossProduct(v1, v2) {
+/* utility functions */
+
+// Draw a pixel at x, y using color
+function drawPixel(imagedata, x, y, color) {
+    var index = (x + y * imagedata.width) * 4;
+    imagedata.data[index + 0] = color.r;
+    imagedata.data[index + 1] = color.g;
+    imagedata.data[index + 2] = color.b;
+    imagedata.data[index + 3] = color.a;
+}
+
+// Helper to fetch JSON data
+function fetchJSONFile(path, callback) {
+    var httpRequest = new XMLHttpRequest();
+    httpRequest.onreadystatechange = () => {
+        if (httpRequest.readyState === 4) {
+            if (httpRequest.status === 200) {
+                var data = JSON.parse(httpRequest.responseText);
+                if (callback) callback(data);
+            }
+        }
+    };
+    httpRequest.open('GET', path);
+    httpRequest.send();
+}
+
+// Vector operations
+function vectorSubtract(a, b) {
+    return { x: a.x - b.x, y: a.y - b.y, z: a.z - b.z };
+}
+
+function vectorCross(a, b) {
     return {
-        x: v1.y * v2.z - v1.z * v2.y,
-        y: v1.z * v2.x - v1.x * v2.z,
-        z: v1.x * v2.y - v1.y * v2.x
+        x: a.y * b.z - a.z * b.y,
+        y: a.z * b.x - a.x * b.z,
+        z: a.x * b.y - a.y * b.x
     };
 }
 
-// Helper function to subtract two vectors
-function subtract(v1, v2) {
-    return {x: v1.x - v2.x, y: v1.y - v2.y, z: v1.z - v2.z};
+function vectorDot(a, b) {
+    return a.x * b.x + a.y * b.y + a.z * b.z;
 }
 
-// Helper function to normalize a vector
-function normalize(v) {
-    let length = Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
-    return {x: v.x / length, y: v.y / length, z: v.z / length};
+function vectorScale(v, s) {
+    return { x: v.x * s, y: v.y * s, z: v.z * s };
 }
 
-// Calculate the ray for a pixel
-function calculateRay(x, y, width, height) {
-    return normalize({
-        x: (x / width) - 0.5,
-        y: (1 - y / height) - 0.5,
-        z: 0
-    });
+function vectorNormalize(v) {
+    var len = Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+    return vectorScale(v, 1.0 / len);
 }
 
-// Determine if a ray intersects with a triangle
-function rayIntersectsTriangle(ray, triangle, vertex1, vertex2, vertex3) {
-    let edge1 = subtract(vertex2, vertex1);
-    let edge2 = subtract(vertex3, vertex1);
-    let h = crossProduct(ray, edge2);
-    let a = dotProduct(edge1, h);
-
-    if (a > -0.00001 && a < 0.00001) return null;
-
-    let f = 1 / a;
-    let s = subtract(eye, vertex1);
-    let u = f * dotProduct(s, h);
-
-    if (u < 0 || u > 1) return null;
-
-    let q = crossProduct(s, edge1);
-    let v = f * dotProduct(ray, q);
-
-    if (v < 0 || u + v > 1) return null;
-
-    let t = f * dotProduct(edge2, q);
-
-    if (t > 0.00001) return {t: t, point: {x: eye.x + ray.x * t, y: eye.y + ray.y * t, z: eye.z + ray.z * t}};
-    else return null;
+// Ray-triangle intersection
+function rayIntersectsTriangle(ray, triangle) {
+    const EPSILON = 0.0000001;
+    var vertex0 = triangle.vertices[0];
+    var vertex1 = triangle.vertices[1];
+    var vertex2 = triangle.vertices[2];
+    var edge1 = vectorSubtract(vertex1, vertex0);
+    var edge2 = vectorSubtract(vertex2, vertex0);
+    var h = vectorCross(ray.direction, edge2);
+    var a = vectorDot(edge1, h);
+    if (a > -EPSILON && a < EPSILON)
+        return null;    // This ray is parallel to this triangle.
+    var f = 1.0/a;
+    var s = vectorSubtract(ray.origin, vertex0);
+    var u = f * vectorDot(s, h);
+    if (u < 0.0 || u > 1.0)
+        return null;
+    var q = vectorCross(s, edge1);
+    var v = f * vectorDot(ray.direction, q);
+    if (v < 0.0 || u + v > 1.0)
+        return null;
+    // At this stage we can compute t to find out where the intersection point is on the line.
+    var t = f * vectorDot(edge2, q);
+    if (t > EPSILON) // ray intersection
+        return { distance: t, point: vectorAdd(ray.origin, vectorScale(ray.direction, t)) };
+    else // This means that there is a line intersection but not a ray intersection.
+        return null;
 }
 
-// Blinn-Phong lighting model
-function blinnPhongLighting(intersection, normal, material, light, view) {
-    const ambient = {r: material.ambient[0], g: material.ambient[1], b: material.ambient[2]};
-    const lightDir = normalize(subtract(light, intersection));
-    const viewDir = normalize(subtract(view, intersection));
-    const halfDir = normalize({
-        x: lightDir.x + viewDir.x,
-        y: lightDir.y + viewDir.y,
-        z: lightDir.z + viewDir.z
-    });
-
-    const diffuseIntensity = Math.max(0, dotProduct(normal, lightDir));
-    const specularIntensity = Math.pow(Math.max(0, dotProduct(normal, halfDir)), material.n);
-
-    return new Color(
-        255 * (ambient.r + material.diffuse[0] * diffuseIntensity + material.specular[0] * specularIntensity),
-        255 * (ambient.g + material.diffuse[1] * diffuseIntensity + material.specular[1] * specularIntensity),
-        255 * (ambient.b + material.diffuse[2] * diffuseIntensity + material.specular[2] * specularIntensity),
-        255
-    );
+function vectorAdd(a, b) {
+    return { x: a.x + b.x, y: a.y + b.y, z: a.z + b.z };
 }
 
-// Draw the scene with ray casting and lighting
-function drawTriangles(context) {
-    const inputTriangles = getInputTriangles();
-    const width = context.canvas.width;
-    const height = context.canvas.height;
-    const imagedata = context.createImageData(width, height);
+/* main function */
 
-    if (inputTriangles) {
-        for (let y = 0; y < height; y++) {
-            for (let x = 0; x < width; x++) {
-                let ray = calculateRay(x, y, width, height);
-                let closestT = Infinity;
-                let closestIntersection = null;
-                let closestTriangle = null;
-                let closestNormal = null;
+function main() {
+    var canvas = document.getElementById('viewport');
+    var context = canvas.getContext('2d');
+    var imageData = context.createImageData(canvas.width, canvas.height);
 
-                for (let i = 0; i < inputTriangles.length; i++) {
-                    let triangleSet = inputTriangles[i];
-                    for (let j = 0; j < triangleSet.triangles.length; j++) {
-                        let tri = triangleSet.triangles[j];
-                        let vertex1 = {x: triangleSet.vertices[tri[0]][0], y: triangleSet.vertices[tri[0]][1], z: triangleSet.vertices[tri[0]][2]};
-                        let vertex2 = {x: triangleSet.vertices[tri[1]][0], y: triangleSet.vertices[tri[1]][1], z: triangleSet.vertices[tri[1]][2]};
-                        let vertex3 = {x: triangleSet.vertices[tri[2]][0], y: triangleSet.vertices[tri[2]][1], z: triangleSet.vertices[tri[2]][2]};
+    // Define the view
+    var eye = { x: 0.5, y: 0.5, z: -0.5 };
+    var lookAt = { x: 0, y: 0, z: 1 };
+    var viewUp = { x: 0, y: 1, z: 0 };
+    var distToScreen = 0.5;
 
-                        let intersection = rayIntersectsTriangle(ray, tri, vertex1, vertex2, vertex3);
-                        if (intersection && intersection.t < closestT) {
-                            closestT = intersection.t;
-                            closestIntersection = intersection.point;
-                            closestTriangle = triangleSet;
-                            closestNormal = normalize(crossProduct(subtract(vertex2, vertex1), subtract(vertex3, vertex1)));
+    // Fetch triangles from JSON
+    fetchJSONFile('triangles.json', (trianglesData) => {
+        trianglesData.forEach(data => {
+            var triangles = data.triangles;
+            var vertices = data.vertices;
+
+            // For each triangle, render it
+            triangles.forEach(tri => {
+                var vertexIndices = tri;
+                var triangle = {
+                    vertices: vertexIndices.map(index => ({
+                        x: vertices[index][0],
+                        y: vertices[index][1],
+                        z: vertices[index][2]
+                    })),
+                    material: data.material
+                };
+
+                // Check for intersections
+                for (let x = 0; x < canvas.width; x++) {
+                    for (let y = 0; y < canvas.height; y++) {
+                        var dir = {
+                            x: (x / canvas.width) - 0.5,
+                            y: (y / canvas.height) - 0.5,
+                            z: 1
+                        };
+                        dir = vectorNormalize(dir);
+                        var ray = { origin: eye, direction: dir };
+                        var hit = rayIntersectsTriangle(ray, triangle);
+                        if (hit) {
+                            var color = new Color(data.material.diffuse[0] * 255, data.material.diffuse[1] * 255, data.material.diffuse[2] * 255, 255);
+                            drawPixel(imageData, x, y, color);
                         }
                     }
                 }
+            });
+        });
 
-                if (closestTriangle) {
-                    let color = blinnPhongLighting(closestIntersection, closestNormal, closestTriangle.material, light, eye);
-                    drawPixel(imagedata, x, y, color);
-                }
-            }
-        }
-    }
-
-    context.putImageData(imagedata, 0, 0);
+        context.putImageData(imageData, 0, 0);
+    });
 }
 
-/* main -- here is where execution begins after window load */
-function main() {
-    var canvas = document.getElementById("viewport"); 
-    var context = canvas.getContext("2d");
-
-    drawTriangles(context);
-}
+// Set the canvas and context
+window.onload = main;
