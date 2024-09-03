@@ -256,156 +256,119 @@ function drawInputTrainglesUsingPaths(context) {
     } // end if triangle files found
 } // end draw input triangles
 
-// put random points in the boxes from the class github
-function drawRandPixelsInInputBoxes(context) {
-    var inputBoxes = getInputBoxes();
+
+
+function setupCamera() {
+    return {
+        eye: {x: 0.5, y: 0.5, z: -0.5},
+        lookAt: {x: 0, y: 0, z: 1},
+        up: {x: 0, y: 1, z: 0},
+        windowDist: 0.5,
+        windowSize: {width: 1, height: 1}
+    };
+}
+
+function rayIntersectsTriangle(rayOrigin, rayVector, triangle) {
+    const [v0, v1, v2] = triangle;
+    const EPSILON = 1e-9;
+
+    let edge1 = { x: v1.x - v0.x, y: v1.y - v0.y, z: v1.z - v0.z };
+    let edge2 = { x: v2.x - v0.x, y: v2.y - v0.y, z: v2.z - v0.z };
+    let h = crossProduct(rayVector, edge2);
+    let a = dotProduct(edge1, h);
+
+    if (a > -EPSILON && a < EPSILON)
+        return null;    // This ray is parallel to this triangle.
+
+    let f = 1.0 / a;
+    let s = { x: rayOrigin.x - v0.x, y: rayOrigin.y - v0.y, z: rayOrigin.z - v0.z };
+    let u = f * dotProduct(s, h);
+
+    if (u < 0.0 || u > 1.0)
+        return null;
+
+    let q = crossProduct(s, edge1);
+    let v = f * dotProduct(rayVector, q);
+
+    if (v < 0.0 || u + v > 1.0)
+        return null;
+
+    // At this stage we can compute t to find out where the intersection point is on the line.
+    let t = f * dotProduct(edge2, q);
+
+    if (t > EPSILON) // ray intersection
+        return { distance: t, point: { x: rayOrigin.x + rayVector.x * t, y: rayOrigin.y + rayVector.y * t, z: rayOrigin.z + rayVector.z * t } };
+    else // This means that there is a line intersection but not a ray intersection.
+        return null;
+}
+
+function dotProduct(vec1, vec2) {
+    return vec1.x * vec2.x + vec1.y * vec2.y + vec1.z * vec2.z;
+}
+
+function crossProduct(vec1, vec2) {
+    return {
+        x: vec1.y * vec2.z - vec1.z * vec2.y,
+        y: vec1.z * vec2.x - vec1.x * vec2.z,
+        z: vec1.x * vec2.y - vec1.y * vec2.x
+    };
+}
+
+
+
+function renderTriangles(context, camera, triangles) {
     var w = context.canvas.width;
     var h = context.canvas.height;
-    var imagedata = context.createImageData(w,h);
-    const PIXEL_DENSITY = 0.1;
-    var numCanvasPixels = (w*h)*PIXEL_DENSITY; 
-    
-    if (inputBoxes != String.null) { 
-	    var x  = 0; var y  = 0; // pixel coord init
-        var lx = 0; var rx = 0; // input lx, rx from boxes.json
-        var by = 0; var ty = 0; // input by, ty from boxes.json
-        var fz = 0; var rz = 0; // input fz, rz from boxes.json
-        var numBoxPixels = 0; // init num pixels in boxes
-        var c = new Color(0,0,0,0); // init the box color
-        var n = inputBoxes.length; // the number of input boxes
-        //console.log("number of ellipses: " + n);
+    var imageData = context.createImageData(w, h);
+    var viewPlaneWidth = camera.windowSize.width;
+    var viewPlaneHeight = camera.windowSize.height;
+    var pixelWidth = viewPlaneWidth / w;
+    var pixelHeight = viewPlaneHeight / h;
 
-        // Loop over the ellipsoids, draw rand pixels in each
-        for (var b=0; b<n; b++) {
-			// input lx,rx,by,ty on canvas
-			lx = w*inputBoxes[b].lx;
-			rx = w*inputBoxes[b].rx;
-			by = h*inputBoxes[b].by;
-			ty = h*inputBoxes[b].ty;           
-			
-            numBoxesPixels  = (rx-lx)*(ty-by); // projected box area 
-            numBoxesPixels *= PIXEL_DENSITY;  // percentage of box area to render to pixels
-            numBoxesPixels  = Math.round(numBoxesPixels);
-           
-            //console.log("num box pixels: "+numBoxesPixels);
-            
-			c.change(
-                inputBoxes[b].diffuse[0]*255,
-                inputBoxes[b].diffuse[1]*255,
-                inputBoxes[b].diffuse[2]*255,
-                255); // box diffuse color
-            for (var p=0; p<numBoxesPixels; p++) {
-                do {
-                    x = Math.floor(Math.random()*w); 
-                    y = Math.floor(Math.random()*h); 
-                } while ( x<lx || x>rx || y>ty || y<by ) // inside the projection
-                drawPixel(imagedata,x,y,c);
-                //console.log("color: ("+c.r+","+c.g+","+c.b+")");
-                //console.log("x: " + x);
-                //console.log("y: " + y);
-            } // end for pixels in box
-        } // end for boxes
-        context.putImageData(imagedata, 0, 0);
-    } // end if boxes found
-} // end draw rand pixels in input boxes
-
-//draw 2d projections boxes from the JSON file at class github
-function drawInputBoxesUsingPaths(context) {
-    var inputBoxes = getInputBoxes();
-    var n = inputBoxes.length; // the number of input boxes
-	
-    if (inputBoxes != String.null) { 
-		var w = context.canvas.width;
-        var h = context.canvas.height;
-        var c = new Color(0,0,0,0); // the color at the pixel: black
-        var x  = 0; var y  = 0; // pixel coord init
-        var lx = 0; var rx = 0; // input lx, rx from boxes.json
-        var by = 0; var ty = 0; // input by, ty from boxes.json
-        var fz = 0; var rz = 0; // input fz, rz from boxes.json
-        //console.log("number of files: " + n);
-
-        // Loop over the input files
-        for (var b=0; b<n; b++) {
-				
-			// input lx,rx,by,ty on canvas
-			lx = w*inputBoxes[b].lx;
-			rx = w*inputBoxes[b].rx;
-			by = h*inputBoxes[b].by;
-			ty = h*inputBoxes[b].ty; 
-        		
-            context.fillStyle = 
-            	"rgb(" + Math.floor(inputBoxes[b].diffuse[0]*255)
-            	+","+ Math.floor(inputBoxes[b].diffuse[1]*255)
-            	+","+ Math.floor(inputBoxes[b].diffuse[2]*255) +")"; // diffuse color
-            
-            var path=new Path2D();
-            path.moveTo(lx,ty);
-            path.lineTo(lx,by);
-            path.lineTo(rx,by);
-			path.lineTo(rx,ty);
-            path.closePath();
-            context.fill(path);
-
-        } // end for files
-    } // end if box files found
-} // end draw input boxes
-
-
-function rayCastRenderTriangles(context) {
-    var inputTriangles = getInputTriangles(); // 加载三角形数据
-    var w = context.canvas.width;
-    var h = context.canvas.height;
-    var imagedata = context.createImageData(w, h);
-    
-    var eye = {x: 0.5, y: 0.5, z: -0.5}; // 眼睛位置
-    var lookAt = {x: 0, y: 0, z: 1}; // 观察方向
-    var up = {x: 0, y: 1, z: 0}; // 上方向
-    var fov = 1; // 视场（简化为正方形视窗）
-    var viewDistance = 0.5; // 视窗距离
-
-    // 遍历画布上的每个像素
-    for (var px = 0; px < w; px++) {
-        for (var py = 0; py < h; py++) {
-            // 将像素坐标转换为视窗坐标
-            var x = (px / w) - 0.5;
-            var y = (py / h) - 0.5;
-            
-            // 创建光线方向
-            var ray = {
-                x: lookAt.x * viewDistance + x,
-                y: lookAt.y * viewDistance + y,
-                z: lookAt.z * viewDistance
+    for (let x = 0; x < w; x++) {
+        for (let y = 0; y < h; y++) {
+            let px = (x / w) * viewPlaneWidth - viewPlaneWidth / 2;
+            let py = (y / h) * viewPlaneHeight - viewPlaneHeight / 2;
+            let ray = {
+                origin: camera.eye,
+                direction: normalize({ x: px, y: -py, z: camera.windowDist })
             };
 
-            // 初始化最小深度和颜色
-            var minDepth = Infinity;
-            var color = null;
+            let closestIntersection = { distance: Infinity, color: null };
 
-            // 检查每个三角形
-            inputTriangles.forEach(trianglesFile => {
-                trianglesFile.triangles.forEach(triangleIndex => {
-                    var triangle = trianglesFile.vertices.map(vIdx => trianglesFile.vertices[vIdx]);
-                    // 这里需要添加一个检查光线与三角形相交的函数，我们简化处理：
-                    var result = rayIntersectsTriangle(eye, ray, triangle);
-                    if (result.hit && result.distance < minDepth) {
-                        minDepth = result.distance;
-                        color = trianglesFile.material.diffuse;
-                    }
-                });
+            triangles.forEach(triangle => {
+                let vertices = triangle.vertices.map(v => ({ x: v[0], y: v[1], z: v[2] }));
+                let result = rayIntersectsTriangle(ray.origin, ray.direction, vertices);
+                if (result && result.distance < closestIntersection.distance) {
+                    closestIntersection = {
+                        distance: result.distance,
+                        color: triangle.material.diffuse
+                    };
+                }
             });
 
-            // 如果有颜色，则设置像素
-            if (color) {
-                var idx = (py * w + px) * 4;
-                imagedata.data[idx] = color[0] * 255;
-                imagedata.data[idx + 1] = color[1] * 255;
-                imagedata.data[idx + 2] = color[2] * 255;
-                imagedata.data[idx + 3] = 255; // alpha值
+            if (closestIntersection.color) {
+                let idx = (x + y * w) * 4;
+                imageData.data[idx] = closestIntersection.color[0] * 255;
+                imageData.data[idx + 1] = closestIntersection.color[1] * 255;
+                imageData.data[idx + 2] = closestIntersection.color[2] * 255;
+                imageData.data[idx + 3] = 255; // Alpha channel
             }
         }
     }
-    context.putImageData(imagedata, 0, 0);
+
+    context.putImageData(imageData, 0, 0);
 }
+
+function normalize(vec) {
+    let length = Math.sqrt(vec.x * vec.x + vec.y * vec.y + vec.z * vec.z);
+    return {
+        x: vec.x / length,
+        y: vec.y / length,
+        z: vec.z / length
+    };
+}
+
 
 
 
@@ -417,7 +380,12 @@ function main() {
     // Get the canvas and context
     var canvas = document.getElementById("viewport"); 
     var context = canvas.getContext("2d");
-    rayCastRenderTriangles(context);
+
+	
+    var camera = setupCamera();
+    var triangles = getInputTriangles(); // 假设这里已经修改为同步加载或事先加载完毕
+
+    renderTriangles(context, camera, triangles);
  
     // Create the image
     //drawRandPixels(context);
